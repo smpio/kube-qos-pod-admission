@@ -33,7 +33,6 @@ var nodeTaintValue string
 var nodeLabelKey string
 var nodeLabelValue string
 var requiredResourcesList []string
-var hardIsolation = false
 
 func init() {
 	corev1.AddToScheme(scheme)
@@ -59,8 +58,6 @@ func main() {
 		"Node label")
 	flag.StringVar(&RequiredResources, "required-resources", RequiredResources, ""+
 		"What resources should be set in pod.spec.resources.limits to define pod as guaranteed")
-	flag.BoolVar(&hardIsolation, "hard-isolation", hardIsolation, ""+
-		"Set nodeSelector for guaranteed pods or preferredDuringSchedulingIgnoredDuringExecution")
 
 	flag.Parse()
 
@@ -203,11 +200,7 @@ func makePatch(pod *corev1.Pod) []*operation {
 		ops = append(ops, makeTolerationOperation(pod))
 	}
 
-	if hardIsolation {
-		ops = append(ops, makeNodeSelectorOperation(pod))
-	} else {
-		ops = append(ops, makeNodeAffinityOperation(pod))
-	}
+	ops = append(ops, makeNodeSelectorOperation(pod))
 
 	return ops
 }
