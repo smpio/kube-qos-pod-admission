@@ -183,17 +183,8 @@ func admit(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 func makePatch(pod *corev1.Pod) []*operation {
 	ops := []*operation{}
 
-	for _, container := range pod.Spec.Containers {
-		if container.Resources.Limits == nil {
-			return ops
-		}
-
-		for _, resource := range requiredResourcesList {
-			_, isSet := container.Resources.Limits[v1.ResourceName(resource)]
-			if !isSet {
-				return ops
-			}
-		}
+	if !doesMatch(pod) {
+		return ops
 	}
 
 	if !hasToleration(pod) {
@@ -203,6 +194,23 @@ func makePatch(pod *corev1.Pod) []*operation {
 	ops = append(ops, makeNodeSelectorOperation(pod))
 
 	return ops
+}
+
+func doesMatch(pod *corev1.Pod) bool {
+	for _, container := range pod.Spec.Containers {
+		if container.Resources.Limits == nil {
+			return false
+		}
+
+		for _, resource := range requiredResourcesList {
+			_, isSet := container.Resources.Limits[v1.ResourceName(resource)]
+			if !isSet {
+				return false
+			}
+		}
+	}
+
+	return true
 }
 
 func hasToleration(pod *corev1.Pod) bool {
