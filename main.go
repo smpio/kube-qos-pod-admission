@@ -14,7 +14,6 @@ import (
 	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -202,19 +201,25 @@ func doesMatch(pod *corev1.Pod) bool {
 			return false
 		}
 
-		if container.Resources.Requests[v1.ResourceMemory] == resource.MustParse("0") {
+		var memReq = container.Resources.Requests[v1.ResourceMemory]
+		var memLim = container.Resources.Limits[v1.ResourceMemory]
+
+		if memReq.IsZero() {
 			return false
 		}
 
-		if container.Resources.Requests[v1.ResourceMemory] != container.Resources.Limits[v1.ResourceMemory] {
+		if !memReq.Equal(memLim) {
 			return false
 		}
 
-		if container.Resources.Requests[v1.ResourceCPU] == resource.MustParse("0") {
+		var cpuReq = container.Resources.Requests[v1.ResourceCPU]
+		var cpuLim = container.Resources.Limits[v1.ResourceCPU]
+
+		if cpuReq.IsZero() {
 			return false
 		}
 
-		if container.Resources.Limits[v1.ResourceCPU] == resource.MustParse("0") {
+		if cpuLim.IsZero() {
 			return false
 		}
 	}
