@@ -1,1 +1,1 @@
-# kube-guaranteed-pod-admission
+# kube-qos-pod-admission

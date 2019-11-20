@@ -28,8 +28,10 @@ type operation struct {
 var scheme = runtime.NewScheme()
 var codecs = serializer.NewCodecFactory(scheme)
 
-var nodeTaint = "k8s.smp.io/guaranteed"
-var nodeLabel = "k8s.smp.io/guaranteed"
+var nodeTaintKey string
+var nodeTaintValue string
+var nodeLabelKey string
+var nodeLabelValue string
 var requiredResourcesList []string
 var hardIsolation = false
 
@@ -41,6 +43,8 @@ func init() {
 func main() {
 	var CertFile string
 	var KeyFile string
+	var NodeTaint = "k8s.smp.io/qos=enforced"
+	var NodeLabel = "k8s.smp.io/qos=enforced"
 	var RequiredResources = "cpu,memory"
 
 	flag.StringVar(&CertFile, "tls-cert-file", CertFile, ""+
@@ -49,9 +53,9 @@ func main() {
 	flag.StringVar(&KeyFile, "tls-key-file", KeyFile, ""+
 		"File containing the default x509 private key matching --tls-cert-file.")
 
-	flag.StringVar(&nodeTaint, "node-taint", nodeTaint, ""+
+	flag.StringVar(&NodeTaint, "node-taint", NodeTaint, ""+
 		"Node taint")
-	flag.StringVar(&nodeLabel, "node-label", nodeLabel, ""+
+	flag.StringVar(&NodeLabel, "node-label", NodeLabel, ""+
 		"Node label")
 	flag.StringVar(&RequiredResources, "required-resources", RequiredResources, ""+
 		"What resources should be set in pod.spec.resources.limits to define pod as guaranteed")
@@ -60,6 +64,10 @@ func main() {
 
 	flag.Parse()
 
+	nodeTaintKey = strings.Split(NodeTaint, "=")[0]
+	nodeTaintValue = strings.Split(NodeTaint, "=")[1]
+	nodeLabelKey = strings.Split(NodeLabel, "=")[0]
+	nodeLabelValue = strings.Split(NodeLabel, "=")[1]
 	requiredResourcesList = strings.Split(RequiredResources, ",")
 
 	http.HandleFunc("/", mkServe())
@@ -206,7 +214,7 @@ func makePatch(pod *corev1.Pod) []*operation {
 
 func hasToleration(pod *corev1.Pod) bool {
 	for _, toleration := range pod.Spec.Tolerations {
-		if toleration.Effect == "" && toleration.Key == nodeTaint {
+		if toleration.Effect == "" && toleration.Key == nodeTaintKey && toleration.Value == nodeTaintValue {
 			return true
 		}
 	}
@@ -221,9 +229,9 @@ func makeTolerationOperation(pod *corev1.Pod) *operation {
 		Op:   "add",
 		Path: fmt.Sprint("/spec/tolerations/", position),
 		Value: &corev1.Toleration{
-			Key:      nodeTaint,
-			Operator: "Exists",
-			Value:    "true",
+			Key:      nodeTaintKey,
+			Operator: "Equal",
+			Value:    nodeTaintValue,
 		},
 	}
 }
@@ -233,13 +241,13 @@ func makeNodeSelectorOperation(pod *corev1.Pod) *operation {
 		return &operation{
 			Op:    "add",
 			Path:  "/spec/nodeSelector",
-			Value: map[string]string{nodeLabel: "true"},
+			Value: map[string]string{nodeLabelKey: nodeLabelValue},
 		}
 	} else {
 		return &operation{
 			Op:    "add",
-			Path:  "/spec/nodeSelector/" + jsonPatchEscape(nodeLabel),
-			Value: "true",
+			Path:  "/spec/nodeSelector/" + jsonPatchEscape(nodeLabelKey),
+			Value: nodeLabelValue,
 		}
 	}
 }

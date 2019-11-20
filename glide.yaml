@@ -1,4 +1,4 @@
-package: github.com/smpio/kube-guaranteed-pod-admission
+package: github.com/smpio/kube-qos-pod-admission
 import:
 - package: gopkg.in/alessio/shellescape.v1
   version: ~1.2.0
