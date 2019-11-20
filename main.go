@@ -202,11 +202,20 @@ func doesMatch(pod *corev1.Pod) bool {
 			return false
 		}
 
+		if container.Resources.Requests == nil {
+			return false
+		}
+
 		for _, resource := range requiredResourcesList {
-			_, isSet := container.Resources.Limits[v1.ResourceName(resource)]
-			if !isSet {
-				return false
+			if limit, isSet := container.Resources.Limits[v1.ResourceName(resource)]; isSet {
+				if request, isSet := container.Resources.Requests[v1.ResourceName(resource)]; isSet {
+					if limit == request {
+						continue
+					}
+				}
 			}
+
+			return false
 		}
 	}
 
