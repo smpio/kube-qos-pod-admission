@@ -14,6 +14,7 @@ import (
 	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -32,7 +33,6 @@ var nodeTaintKey string
 var nodeTaintValue string
 var nodeLabelKey string
 var nodeLabelValue string
-var requiredResourcesList []string
 
 func init() {
 	corev1.AddToScheme(scheme)
@@ -44,7 +44,6 @@ func main() {
 	var KeyFile string
 	var NodeTaint = "k8s.smp.io/qos=enforced"
 	var NodeLabel = "k8s.smp.io/qos=enforced"
-	var RequiredResources = "cpu,memory"
 
 	flag.StringVar(&CertFile, "tls-cert-file", CertFile, ""+
 		"File containing the default x509 Certificate for HTTPS. (CA cert, if any, concatenated "+
@@ -56,8 +55,6 @@ func main() {
 		"Node taint")
 	flag.StringVar(&NodeLabel, "node-label", NodeLabel, ""+
 		"Node label")
-	flag.StringVar(&RequiredResources, "required-resources", RequiredResources, ""+
-		"What resources should be set in pod.spec.resources.limits to define pod as guaranteed")
 
 	flag.Parse()
 
@@ -65,7 +62,6 @@ func main() {
 	nodeTaintValue = strings.Split(NodeTaint, "=")[1]
 	nodeLabelKey = strings.Split(NodeLabel, "=")[0]
 	nodeLabelValue = strings.Split(NodeLabel, "=")[1]
-	requiredResourcesList = strings.Split(RequiredResources, ",")
 
 	http.HandleFunc("/", mkServe())
 	server := &http.Server{
@@ -206,15 +202,19 @@ func doesMatch(pod *corev1.Pod) bool {
 			return false
 		}
 
-		for _, resource := range requiredResourcesList {
-			if limit, isSet := container.Resources.Limits[v1.ResourceName(resource)]; isSet {
-				if request, isSet := container.Resources.Requests[v1.ResourceName(resource)]; isSet {
-					if limit == request {
-						continue
-					}
-				}
-			}
+		if container.Resources.Requests[v1.ResourceMemory] == resource.MustParse("0") {
+			return false
+		}
 
+		if container.Resources.Requests[v1.ResourceMemory] != container.Resources.Limits[v1.ResourceMemory] {
+			return false
+		}
+
+		if container.Resources.Requests[v1.ResourceCPU] == resource.MustParse("0") {
+			return false
+		}
+
+		if container.Resources.Limits[v1.ResourceCPU] == resource.MustParse("0") {
 			return false
 		}
 	}
