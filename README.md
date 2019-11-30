@@ -8,7 +8,6 @@ QoS ensured pod should have this `spec.resources` specifications:
 
 * `requests.memory` equal to `limits.memory` and not equal to zero
 * `requests.cpu` not zero
-* `limits.cpu` not zero
 
 
 ## Installation

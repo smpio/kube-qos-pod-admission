@@ -213,13 +213,8 @@ func doesMatch(pod *corev1.Pod) bool {
 		}
 
 		var cpuReq = container.Resources.Requests[v1.ResourceCPU]
-		var cpuLim = container.Resources.Limits[v1.ResourceCPU]
 
 		if cpuReq.IsZero() {
-			return false
-		}
-
-		if cpuLim.IsZero() {
 			return false
 		}
 	}
